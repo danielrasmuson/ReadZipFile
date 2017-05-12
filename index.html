@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+  <script type="text/javascript" src="node_modules/jszip/dist/jszip.min.js"></script>
+  <script type="text/javascript" src="node_modules/jszip-utils/dist/jszip-utils.min.js"></script>
+</head>
+<body>
+
+<input type="text" id="zip-file-url" placeholder="Enter URL to zip file" value="https://s3.amazonaws.com/drone-deploy-plugins/templates/dronedeploy-app-hello-world.zip">
+
+
+
+<ul id="file-list"></ul>
+
+<button id="list-files">List Files</button>
+
+<br>
+<br>
+
+<div>Click a file above to read it.</div>
+<textarea cols="30" rows="10" id="read-file" ></textarea>
+
+<script>
+function unzip(pathToZipFile){
+  return new JSZip.external.Promise(function (resolve, reject) {
+    JSZipUtils.getBinaryContent(pathToZipFile, function(err, data) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(data);
+      }
+    });
+  }).then(function (data) {
+    return JSZip.loadAsync(data);
+  });
+}
+
+const qs = document.querySelector.bind(document);
+const fileList = qs('#file-list');
+const zipFileUrlInput = qs('#zip-file-url');
+const generateFileListButton = qs('#list-files');
+const readFileTextArea = qs('#read-file');
+const generateListItem = (text, clickCallback) => {
+  var listItem = document.createElement('li');
+  listItem.style = 'text-decoration: underline; color: blue; cursor: pointer;';
+  listItem.addEventListener('click', clickCallback);
+  listItem.innerHTML = text;
+  return listItem;
+}
+
+ function fileToString(file) {
+  debugger;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      resolve(e.currentTarget.result)
+    };
+    reader.readAsText(file);
+  })
+}
+
+generateFileListButton.addEventListener('click', () => {
+
+  unzip(zipFileUrlInput.value).then((zipContents) => {
+    const getListItem = (file) => {
+      return generateListItem(file.name, () => {
+        zipContents.file(file.name).async("string")
+          .then(function (fileContents) {
+            readFileTextArea.value = fileContents;
+          });
+      });
+    }
+
+    Object.values(zipContents.files)
+      .filter((file) => !file.dir)
+      .map(getListItem)
+      .forEach((node) => fileList.appendChild(node));
+  })
+})
+</script>
+  
+</body>
+</html>
